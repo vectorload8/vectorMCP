@@ -1,0 +1,164 @@
+# /soma_mcp_server/main_provider.py (VERSÃO COMPLETA E FINAL)
+
+import httpx
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any
+from datetime import date
+
+from fastmcp import FastMCP
+from fastmcp.tools import ToolManager, FunctionTool
+
+# --- 1. CONFIGURAÇÃO ---
+# Endereço da sua API Backend que está rodando
+SOMA_API_URL = "http://127.0.0.1:8000/v1"
+
+# --- 2. MODELOS DE INPUT (PARÂMETROS DAS FERRAMENTAS) ---
+# Cada classe define os parâmetros que uma ferramenta precisa. As descrições são cruciais para a IA.
+
+# Modelos para Gestão de Atletas
+class AdicionarAtletaInput(BaseModel):
+    name: str = Field(..., description="Nome completo do atleta.")
+    birth_date: date = Field(..., description="Data de nascimento no formato AAAA-MM-DD.")
+    sport: str = Field(..., description="Modalidade esportiva principal do atleta.")
+    details: Dict[str, Any] = Field({}, description="Dicionário com detalhes adicionais como peso, altura, etc. Ex: {'weight_kg': 75.5, 'height_cm': 180}")
+
+class AtletaInput(BaseModel):
+    nome: str = Field(..., description="Nome do atleta para buscar, atualizar ou deletar.")
+
+class AtualizarAtletaInput(BaseModel):
+    nome_original: str = Field(..., description="Nome atual do atleta que será atualizado.")
+    novos_dados: Dict[str, Any] = Field(..., description="Dicionário com os novos dados para o atleta.")
+
+class CompararBenchmarkInput(BaseModel):
+    nome_atleta: str = Field(..., description="Nome do atleta a ser comparado.")
+    nome_teste: str = Field(..., description="Nome do teste para comparação (ex: 'CMJ').")
+
+# Modelos para Treinos
+class RegistrarTreinoInput(BaseModel):
+    athlete_id: int = Field(..., description="ID numérico do atleta que realizou o treino.")
+    details: str = Field(..., description="Descrição completa dos exercícios, séries, repetições e cargas.")
+    rpe: int = Field(..., description="Percepção Subjetiva de Esforço, em uma escala de 1 a 10.")
+    duration_minutes: int = Field(..., description="Duração total da sessão de treino em minutos.")
+
+# Modelos para Avaliações
+class RegistrarAvaliacaoInput(BaseModel):
+    athlete_id: int = Field(..., description="ID numérico do atleta que foi avaliado.")
+    assessment_type: str = Field(..., description="Tipo de teste realizado. Ex: 'RAST', 'Y_BALANCE', 'CMJ'.")
+    results: Dict[str, Any] = Field(..., description="Dicionário com os resultados do teste. Ex: {'melhor_tempo_s': 4.1, 'pior_tempo_s': 4.8}")
+
+# Modelos para Bem-Estar
+class RegistrarBemEstarInput(BaseModel):
+    athlete_id: int = Field(..., description="ID numérico do atleta.")
+    qualidade_sono: int = Field(..., ge=1, le=10, description="Qualidade do sono (1 a 10).")
+    nivel_estresse: int = Field(..., ge=1, le=10, description="Nível de estresse (1 a 10).")
+    nivel_fadiga: int = Field(..., ge=1, le=10, description="Nível de fadiga (1 a 10).")
+    dores_musculares: str = Field("Nenhuma", description="Descrição de dores musculares.")
+
+# Modelos para Planejamento
+class GerarMesocicloInput(BaseModel):
+    athlete_id: int = Field(..., description="ID numérico do atleta para o qual o plano será gerado.")
+    objective: str = Field(..., description="Objetivo principal do mesociclo. Ex: 'hipertrofia', 'força máxima'.")
+    duration_weeks: int = Field(..., description="Número de semanas que o mesociclo durará.")
+    sessions_per_week: int = Field(..., description="Número de sessões de treino por semana.")
+    progression_model: str = Field(..., description="Modelo de progressão de carga. Ex: 'linear', 'ondulatoria'.")
+
+# Modelos para Relatórios e Gráficos
+class RelatorioAtletaInput(BaseModel):
+    athlete_id: int = Field(..., description="ID numérico do atleta.")
+
+class GraficoInput(BaseModel):
+    athlete_id: int = Field(..., description="ID numérico do atleta.")
+    metric_name: str = Field(..., description="Nome da métrica para gerar o gráfico (ex: 'acwr', 'strain', 'monotony').")
+
+# --- 3. FUNÇÕES-FERRAMENTA (CHAMADAS À API) ---
+# Cada função corresponde a um endpoint do seu backend.
+
+async def _call_api(method: str, endpoint: str, json_data: dict = None, params: dict = None) -> Dict[str, Any]:
+    """Função auxiliar para fazer chamadas HTTP e tratar respostas."""
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.request(method, f"{SOMA_API_URL}{endpoint}", json=json_data, params=params, timeout=30.0)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            return {"status": "erro", "detalhe": e.response.json()}
+        except Exception as e:
+            return {"status": "erro_geral", "detalhe": str(e)}
+
+# --- Ferramentas de Atletas ---
+async def adicionar_atleta(params: AdicionarAtletaInput) -> Dict[str, Any]:
+    """Cadastra um novo atleta no sistema."""
+    return await _call_api("POST", "/athletes/", json_data=params.dict())
+
+async def listar_atletas() -> List[Dict[str, Any]]:
+    """Retorna uma lista de todos os atletas cadastrados."""
+    return await _call_api("GET", "/athletes/")
+
+async def buscar_atleta_pelo_nome(params: AtletaInput) -> Dict[str, Any]:
+    """Busca os detalhes de um atleta específico pelo nome."""
+    return await _call_api("GET", f"/athletes/{params.nome}")
+
+async def deletar_atleta(params: AtletaInput) -> Dict[str, Any]:
+    """Deleta um atleta do sistema pelo nome."""
+    # Nota: A API espera um ID, então idealmente o backend teria um endpoint para deletar por nome,
+    # ou a IA precisaria primeiro buscar o atleta para obter o ID.
+    # Esta ferramenta assume que o backend pode resolver o nome para ID.
+    atleta_dados = await buscar_atleta_pelo_nome(params)
+    if atleta_dados.get("id"):
+        return await _call_api("DELETE", f"/athletes/{atleta_dados['id']}")
+    return atleta_dados # Retorna o erro "não encontrado"
+
+# --- Ferramentas de Treinos ---
+async def registrar_treino(params: RegistrarTreinoInput) -> Dict[str, Any]:
+    """Registra uma nova sessão de treino para um atleta."""
+    return await _call_api("POST", "/workouts/register", json_data=params.dict())
+
+# --- Ferramentas de Avaliações ---
+async def registrar_avaliacao(params: RegistrarAvaliacaoInput) -> Dict[str, Any]:
+    """Registra os resultados de uma avaliação de performance formal."""
+    return await _call_api("POST", "/assessments/", json_data=params.dict())
+
+# --- Ferramentas de Bem-Estar ---
+async def registrar_bem_estar(params: RegistrarBemEstarInput) -> Dict[str, Any]:
+    """Registra o estado de bem-estar diário de um atleta."""
+    return await _call_api("POST", "/wellness/log", json_data=params.dict())
+
+# --- Ferramentas de Planejamento ---
+async def gerar_mesociclo(params: GerarMesocicloInput) -> Dict[str, Any]:
+    """Cria um plano de treino estruturado (mesociclo) para um atleta."""
+    return await _call_api("POST", "/planning/generate-mesocycle", json_data=params.dict())
+
+# --- Ferramentas de Relatórios e Gráficos ---
+async def gerar_relatorio_atleta(params: RelatorioAtletaInput) -> Dict[str, Any]:
+    """Gera um relatório de performance completo para um atleta específico."""
+    return await _call_api("GET", f"/reports/athlete-report/{params.athlete_id}")
+
+async def gerar_relatorio_equipe() -> Dict[str, Any]:
+    """Gera um relatório resumido com o status de todos os atletas da equipe."""
+    return await _call_api("GET", "/reports/team-report")
+
+async def gerar_grafico_performance(params: GraficoInput) -> Dict[str, Any]:
+    """Gera um link para uma imagem de gráfico de performance para um atleta e uma métrica."""
+    return await _call_api("GET", "/charts/performance-chart", params=params.dict())
+
+# --- 4. CONFIGURAÇÃO DO GERENCIADOR DE FERRAMENTAS ---
+tool_manager = ToolManager()
+
+# Registrando todas as funções como ferramentas
+tool_manager.register_tool(FunctionTool(func=adicionar_atleta, args_schema=AdicionarAtletaInput))
+tool_manager.register_tool(FunctionTool(func=listar_atletas))
+tool_manager.register_tool(FunctionTool(func=buscar_atleta_pelo_nome, args_schema=AtletaInput))
+tool_manager.register_tool(FunctionTool(func=deletar_atleta, args_schema=AtletaInput))
+tool_manager.register_tool(FunctionTool(func=registrar_treino, args_schema=RegistrarTreinoInput))
+tool_manager.register_tool(FunctionTool(func=registrar_avaliacao, args_schema=RegistrarAvaliacaoInput))
+tool_manager.register_tool(FunctionTool(func=registrar_bem_estar, args_schema=RegistrarBemEstarInput))
+tool_manager.register_tool(FunctionTool(func=gerar_mesociclo, args_schema=GerarMesocicloInput))
+tool_manager.register_tool(FunctionTool(func=gerar_relatorio_atleta, args_schema=RelatorioAtletaInput))
+tool_manager.register_tool(FunctionTool(func=gerar_relatorio_equipe))
+tool_manager.register_tool(FunctionTool(func=gerar_grafico_performance, args_schema=GraficoInput))
+
+# --- 5. CRIAÇÃO DO SERVIDOR MCP ---
+app = FastMCP(tools=tool_manager.tools)
+
+print("Servidor de Ferramentas Soma AI (Cliente HTTP) configurado e pronto.")
+print("Execute com: uvicorn main_provider:app --reload --port 8001")

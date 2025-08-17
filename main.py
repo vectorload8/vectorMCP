@@ -4,13 +4,12 @@ import httpx
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any
 from datetime import date
-
 from fastmcp import FastMCP
 from fastmcp.tools import ToolManager, FunctionTool
-
+import os
 # --- 1. CONFIGURAÇÃO ---
 # Endereço da sua API Backend que está rodando
-SOMA_API_URL = "http://127.0.0.1:8000/v1"
+SOMA_API_URL = os.getenv("SOMA_API_URL")
 
 # --- 2. MODELOS DE INPUT (PARÂMETROS DAS FERRAMENTAS) ---
 # Cada classe define os parâmetros que uma ferramenta precisa. As descrições são cruciais para a IA.

@@ -9,7 +9,7 @@ from fastmcp.tools import ToolManager, FunctionTool
 import os
 # --- 1. CONFIGURAÇÃO ---
 # Endereço da sua API Backend que está rodando
-SOMA_API_URL = os.getenv("SOMA_API_URL")
+VECTOR_API_URL = os.getenv("VECTOR_API_URL")
 
 # --- 2. MODELOS DE INPUT (PARÂMETROS DAS FERRAMENTAS) ---
 # Cada classe define os parâmetros que uma ferramenta precisa. As descrições são cruciais para a IA.
@@ -76,7 +76,7 @@ async def _call_api(method: str, endpoint: str, json_data: dict = None, params: 
     """Função auxiliar para fazer chamadas HTTP e tratar respostas."""
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.request(method, f"{SOMA_API_URL}{endpoint}", json=json_data, params=params, timeout=30.0)
+            response = await client.request(method, f"{VECTOR_API_URL}{endpoint}", json=json_data, params=params, timeout=30.0)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
@@ -159,5 +159,5 @@ tool_manager.register_tool(FunctionTool(func=gerar_grafico_performance, args_sch
 # --- 5. CRIAÇÃO DO SERVIDOR MCP ---
 app = FastMCP(tools=tool_manager.tools)
 
-print("Servidor de Ferramentas Soma AI (Cliente HTTP) configurado e pronto.")
+print("Servidor de Ferramentas VECTOR AI (Cliente HTTP) configurado e pronto.")
 print("Execute com: uvicorn main_provider:app --reload --port 8001")

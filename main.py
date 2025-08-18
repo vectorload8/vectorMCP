@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Any
 from datetime import date
 from fastmcp import FastMCP
-from fastmtcp.tools import ToolManager, FunctionTool
+from fastmcp.tools import ToolManager, FunctionTool
 import os
 
 # --- 1. CONFIGURAÇÃO ---

@@ -144,17 +144,17 @@ async def gerar_grafico_performance(params: GraficoInput) -> Dict[str, Any]:
 tool_manager = ToolManager()
 
 # Registrando todas as funções como ferramentas
-tool_manager.register_tool(FunctionTool(func=adicionar_atleta, args_schema=AdicionarAtletaInput))
-tool_manager.register_tool(FunctionTool(func=listar_atletas))
-tool_manager.register_tool(FunctionTool(func=buscar_atleta_pelo_nome, args_schema=AtletaInput))
-tool_manager.register_tool(FunctionTool(func=deletar_atleta, args_schema=AtletaInput))
-tool_manager.register_tool(FunctionTool(func=registrar_treino, args_schema=RegistrarTreinoInput))
-tool_manager.register_tool(FunctionTool(func=registrar_avaliacao, args_schema=RegistrarAvaliacaoInput))
-tool_manager.register_tool(FunctionTool(func=registrar_bem_estar, args_schema=RegistrarBemEstarInput))
-tool_manager.register_tool(FunctionTool(func=gerar_mesociclo, args_schema=GerarMesocicloInput))
-tool_manager.register_tool(FunctionTool(func=gerar_relatorio_atleta, args_schema=RelatorioAtletaInput))
-tool_manager.register_tool(FunctionTool(func=gerar_relatorio_equipe))
-tool_manager.register_tool(FunctionTool(func=gerar_grafico_performance, args_schema=GraficoInput))
+tool_manager.add_tool(FunctionTool(func=adicionar_atleta, args_schema=AdicionarAtletaInput))
+tool_manager.add_tool(FunctionTool(func=listar_atletas))
+tool_manager.add_tool(FunctionTool(func=buscar_atleta_pelo_nome, args_schema=AtletaInput))
+tool_manager.add_tool(FunctionTool(func=deletar_atleta, args_schema=AtletaInput))
+tool_manager.add_tool(FunctionTool(func=registrar_treino, args_schema=RegistrarTreinoInput))
+tool_manager.add_tool(FunctionTool(func=registrar_avaliacao, args_schema=RegistrarAvaliacaoInput))
+tool_manager.add_tool(FunctionTool(func=registrar_bem_estar, args_schema=RegistrarBemEstarInput))
+tool_manager.add_tool(FunctionTool(func=gerar_mesociclo, args_schema=GerarMesocicloInput))
+tool_manager.add_tool(FunctionTool(func=gerar_relatorio_atleta, args_schema=RelatorioAtletaInput))
+tool_manager.add_tool(FunctionTool(func=gerar_relatorio_equipe))
+tool_manager.add_tool(FunctionTool(func=gerar_grafico_performance, args_schema=GraficoInput))
 
 # --- 5. CRIAÇÃO DO SERVIDOR MCP ---
 app = FastMCP(tools=tool_manager.tools)

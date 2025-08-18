@@ -9,7 +9,15 @@ app.use(express.json());
 const VECTOR_API_URL = process.env.VECTOR_API_URL || "https://vectorapi.up.railway.app/v1";
 
 // ----------------- Helper -----------------
+// ----------------- Helper -----------------
 async function callApi(method, endpoint, data = {}, params = {}) {
+  console.log("📡 Enviando requisição para API:", {
+    method,
+    url: `${VECTOR_API_URL}${endpoint}`,
+    data,
+    params
+  });
+
   try {
     const res = await axios({
       method,
@@ -17,8 +25,14 @@ async function callApi(method, endpoint, data = {}, params = {}) {
       data,
       params
     });
+
+    console.log("✅ Resposta da API:", res.status, res.data);
     return res.data;
   } catch (err) {
+    console.error("❌ Erro na API:", {
+      status: err.response?.status,
+      detalhe: err.response?.data || err.message
+    });
     return {
       status: "erro",
       codigo: err.response?.status,
@@ -26,7 +40,6 @@ async function callApi(method, endpoint, data = {}, params = {}) {
     };
   }
 }
-
 // ----------------- Tools -----------------
 const tools = [
   {

@@ -6,6 +6,7 @@ from fastmcp import FastMCP
 from fastmcp.tools import ToolManager, FunctionTool
 import os
 import logging
+import asyncio
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -179,8 +180,7 @@ tool_manager.add_tool(FunctionTool(name="gerar_relatorio_atleta", fn=gerar_relat
 tool_manager.add_tool(FunctionTool(name="gerar_relatorio_equipe", fn=gerar_relatorio_equipe, parameters={}))
 tool_manager.add_tool(FunctionTool(name="gerar_grafico_performance", fn=gerar_grafico_performance, parameters=GraficoInput.model_json_schema()))
 
-# --- 5. CRIAÇÃO DO SERVIDOR MCP (CORRIGIDO) ---
-import asyncio
+# --- 5. CRIAÇÃO DO SERVIDOR MCP (CORRIGIDO) --
 
 async def init_server():
     """Inicializa o servidor MCP de forma assíncrona."""

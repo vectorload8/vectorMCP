@@ -1,0 +1,18 @@
+{
+  "name": "Vector AI MCP Server",
+  "description": "Servidor MCP para integração com a Vector AI Sports Platform",
+  "version": "1.0.0",
+  "endpoints": {
+    "sse": "https://<seu-app>.up.railway.app/mcp"
+  },
+  "capabilities": {
+    "tools": true,
+    "resources": false,
+    "prompts": false,
+    "context": false,
+    "images": false
+  },
+  "author": "Seu Nome / Equipe",
+  "contact": "https://github.com/seu-repo",
+  "license": "MIT"
+}

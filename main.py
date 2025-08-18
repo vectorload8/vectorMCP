@@ -180,12 +180,21 @@ tool_manager.add_tool(FunctionTool(name="gerar_relatorio_equipe", fn=gerar_relat
 tool_manager.add_tool(FunctionTool(name="gerar_grafico_performance", fn=gerar_grafico_performance, parameters=GraficoInput.model_json_schema()))
 
 # --- 5. CRIAÇÃO DO SERVIDOR MCP (CORRIGIDO) ---
-try:
-    app = FastMCP(tools=tool_manager.get_tools())
-    logger.info("Servidor MCP inicializado com sucesso")
-except Exception as e:
-    logger.error(f"Erro ao inicializar servidor MCP: {e}")
-    raise
+import asyncio
+
+async def init_server():
+    """Inicializa o servidor MCP de forma assíncrona."""
+    try:
+        tools = await tool_manager.get_tools()
+        app = FastMCP(tools=tools)
+        logger.info("Servidor MCP inicializado com sucesso")
+        return app
+    except Exception as e:
+        logger.error(f"Erro ao inicializar servidor MCP: {e}")
+        raise
+
+# Inicializa o servidor de forma síncrona
+app = asyncio.run(init_server())
 
 print("Servidor de Ferramentas VECTOR AI (Cliente HTTP) configurado e pronto.")
 print("Execute com: uvicorn main:app --reload --port 8001")

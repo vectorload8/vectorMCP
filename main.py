@@ -130,13 +130,13 @@ async def _call_api(method: str, endpoint: str, json_data: dict = None, params: 
 # --- 4. CRIAR INSTÂNCIA DO FASTMCP ---
 logger.info("Criando instância do FastMCP...")
 
-app = FastMCP("Vector AI Sports MCP Server")
+mcp_server = FastMCP("Vector AI Sports MCP Server")
 logger.info("FastMCP criado com sucesso")
 
 # --- 5. REGISTRAR TOOLS USANDO DECORATORS ---
 logger.info("Registrando tools usando decorators...")
 
-@app.tool()
+@mcp_server.tool()
 async def adicionar_atleta(params: AdicionarAtletaInput) -> Dict[str, Any]:
     """Cadastra um novo atleta no sistema."""
     logger.info(f"adicionar_atleta called with params: {params}")
@@ -148,7 +148,7 @@ async def adicionar_atleta(params: AdicionarAtletaInput) -> Dict[str, Any]:
         logger.error(f"Error in adicionar_atleta: {str(e)}", exc_info=True)
         return {"status": "erro_geral", "detalhe": str(e)}
 
-@app.tool()
+@mcp_server.tool()
 async def listar_atletas() -> Dict[str, Any]:
     """Retorna uma lista de todos os atletas cadastrados."""
     logger.info("listar_atletas called")
@@ -160,7 +160,7 @@ async def listar_atletas() -> Dict[str, Any]:
         logger.error(f"Error in listar_atletas: {str(e)}", exc_info=True)
         return {"status": "erro_geral", "detalhe": str(e)}
 
-@app.tool()
+@mcp_server.tool()
 async def buscar_atleta_pelo_nome(params: AtletaInput) -> Dict[str, Any]:
     """Busca os detalhes de um atleta específico pelo nome."""
     logger.info(f"buscar_atleta_pelo_nome called with params: {params}")
@@ -172,7 +172,7 @@ async def buscar_atleta_pelo_nome(params: AtletaInput) -> Dict[str, Any]:
         logger.error(f"Error in buscar_atleta_pelo_nome: {str(e)}", exc_info=True)
         return {"status": "erro_geral", "detalhe": str(e)}
 
-@app.tool()
+@mcp_server.tool()
 async def deletar_atleta(params: AtletaInput) -> Dict[str, Any]:
     """Deleta um atleta do sistema pelo nome."""
     logger.info(f"deletar_atleta called with params: {params}")
@@ -205,7 +205,7 @@ async def deletar_atleta(params: AtletaInput) -> Dict[str, Any]:
         logger.error(f"Error in deletar_atleta: {str(e)}", exc_info=True)
         return {"status": "erro_geral", "detalhe": str(e)}
 
-@app.tool()
+@mcp_server.tool()
 async def registrar_treino(params: RegistrarTreinoInput) -> Dict[str, Any]:
     """Registra uma nova sessão de treino para um atleta."""
     logger.info(f"registrar_treino called with params: {params}")
@@ -217,7 +217,7 @@ async def registrar_treino(params: RegistrarTreinoInput) -> Dict[str, Any]:
         logger.error(f"Error in registrar_treino: {str(e)}", exc_info=True)
         return {"status": "erro_geral", "detalhe": str(e)}
 
-@app.tool()
+@mcp_server.tool()
 async def registrar_avaliacao(params: RegistrarAvaliacaoInput) -> Dict[str, Any]:
     """Registra os resultados de uma avaliação de performance formal."""
     logger.info(f"registrar_avaliacao called with params: {params}")
@@ -229,7 +229,7 @@ async def registrar_avaliacao(params: RegistrarAvaliacaoInput) -> Dict[str, Any]
         logger.error(f"Error in registrar_avaliacao: {str(e)}", exc_info=True)
         return {"status": "erro_geral", "detalhe": str(e)}
 
-@app.tool()
+@mcp_server.tool()
 async def registrar_bem_estar(params: RegistrarBemEstarInput) -> Dict[str, Any]:
     """Registra o estado de bem-estar diário de um atleta."""
     logger.info(f"registrar_bem_estar called with params: {params}")
@@ -241,7 +241,7 @@ async def registrar_bem_estar(params: RegistrarBemEstarInput) -> Dict[str, Any]:
         logger.error(f"Error in registrar_bem_estar: {str(e)}", exc_info=True)
         return {"status": "erro_geral", "detalhe": str(e)}
 
-@app.tool()
+@mcp_server.tool()
 async def gerar_mesociclo(params: GerarMesocicloInput) -> Dict[str, Any]:
     """Cria um plano de treino estruturado (mesociclo) para um atleta."""
     logger.info(f"gerar_mesociclo called with params: {params}")
@@ -253,7 +253,7 @@ async def gerar_mesociclo(params: GerarMesocicloInput) -> Dict[str, Any]:
         logger.error(f"Error in gerar_mesociclo: {str(e)}", exc_info=True)
         return {"status": "erro_geral", "detalhe": str(e)}
 
-@app.tool()
+@mcp_server.tool()
 async def gerar_relatorio_atleta(params: RelatorioAtletaInput) -> Dict[str, Any]:
     """Gera um relatório de performance completo para um atleta específico."""
     logger.info(f"gerar_relatorio_atleta called with params: {params}")
@@ -265,7 +265,7 @@ async def gerar_relatorio_atleta(params: RelatorioAtletaInput) -> Dict[str, Any]
         logger.error(f"Error in gerar_relatorio_atleta: {str(e)}", exc_info=True)
         return {"status": "erro_geral", "detalhe": str(e)}
 
-@app.tool()
+@mcp_server.tool()
 async def gerar_relatorio_equipe() -> Dict[str, Any]:
     """Gera um relatório resumido com o status de todos os atletas da equipe."""
     logger.info("gerar_relatorio_equipe called")
@@ -277,7 +277,7 @@ async def gerar_relatorio_equipe() -> Dict[str, Any]:
         logger.error(f"Error in gerar_relatorio_equipe: {str(e)}", exc_info=True)
         return {"status": "erro_geral", "detalhe": str(e)}
 
-@app.tool()
+@mcp_server.tool()
 async def gerar_grafico_performance(params: GraficoInput) -> Dict[str, Any]:
     """Gera um link para uma imagem de gráfico de performance para um atleta e uma métrica."""
     logger.info(f"gerar_grafico_performance called with params: {params}")
@@ -291,8 +291,49 @@ async def gerar_grafico_performance(params: GraficoInput) -> Dict[str, Any]:
 
 # --- 6. FINALIZAÇÃO ---
 logger.info("Todas as tools registradas com sucesso")
+
+# Para servidores MCP, geralmente não usamos uvicorn diretamente
+# Vamos criar uma aplicação ASGI compatível
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+
+# Criar uma aplicação FastAPI simples que incorpora o MCP
+web_app = FastAPI(title="Vector AI MCP Server", version="1.0.0")
+
+@web_app.get("/")
+async def root():
+    return JSONResponse({
+        "message": "Vector AI MCP Server está rodando",
+        "version": "1.0.0",
+        "tools_disponíveis": len(app._tools) if hasattr(app, '_tools') else "N/A",
+        "status": "online"
+    })
+
+@web_app.get("/health")
+async def health_check():
+    return JSONResponse({"status": "healthy", "mcp_server": "ready"})
+
+@web_app.get("/tools")
+async def list_tools():
+    """Lista todas as tools disponíveis no servidor MCP"""
+    try:
+        tools_info = []
+        if hasattr(app, '_tools'):
+            for tool_name in app._tools:
+                tools_info.append({"name": tool_name, "type": "function"})
+        return JSONResponse({"tools": tools_info})
+    except Exception as e:
+        logger.error(f"Error listing tools: {str(e)}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+# Usar a aplicação FastAPI como a aplicação principal
+app = web_app
+logger.info("Aplicação FastAPI configurada como wrapper para MCP")
+
 print("🚀 Servidor de Ferramentas VECTOR AI (Cliente HTTP) configurado e pronto.")
-print("📋 Execute com: uvicorn main:app --reload --port 8001")
+print("📋 Execute com: uvicorn main:app --reload --port 8001") 
 print("📊 Logs detalhados habilitados para debugging")
+print("🌐 Acesse http://localhost:8001 para verificar o status")
+print("🔧 Acesse http://localhost:8001/tools para listar as ferramentas")
 logger.info("=== SERVIDOR PRONTO PARA CONEXÕES ===")
 logger.info("Para testar a conectividade, verifique se VECTOR_API_URL está acessível")

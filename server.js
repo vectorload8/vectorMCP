@@ -2,10 +2,8 @@ import express from "express";
 import { createMcpServer } from "@pipedream/mcp";
 import axios from "axios";
 
-// Config base
 const VECTOR_API_URL = process.env.VECTOR_API_URL || "https://vectorapi.up.railway.app/v1";
 
-// Função auxiliar de chamada API
 async function callApi(method, endpoint, data = {}, params = {}) {
   try {
     const res = await axios({
@@ -24,11 +22,10 @@ async function callApi(method, endpoint, data = {}, params = {}) {
   }
 }
 
-// Lista de ferramentas MCP
 const tools = [
   {
     name: "adicionar_atleta",
-    description: "Cadastra um novo atleta no sistema",
+    description: "Cadastra um novo atleta",
     inputSchema: {
       type: "object",
       properties: {
@@ -39,47 +36,41 @@ const tools = [
       },
       required: ["name", "birth_date", "sport"]
     },
-    handler: async (args) => callApi("POST", "/athletes/", args)
+    handler: (args) => callApi("POST", "/athletes/", args)
   },
   {
     name: "listar_atletas",
-    description: "Retorna todos os atletas cadastrados",
+    description: "Lista atletas cadastrados",
     inputSchema: { type: "object", properties: {} },
-    handler: async () => callApi("GET", "/athletes/")
+    handler: () => callApi("GET", "/athletes/")
   },
   {
     name: "buscar_atleta_pelo_nome",
-    description: "Busca os detalhes de um atleta pelo nome",
+    description: "Busca atleta pelo nome",
     inputSchema: {
       type: "object",
-      properties: {
-        nome: { type: "string" }
-      },
+      properties: { nome: { type: "string" } },
       required: ["nome"]
     },
-    handler: async ({ nome }) => callApi("GET", `/athletes/${nome}`)
+    handler: ({ nome }) => callApi("GET", `/athletes/${nome}`)
   },
   {
     name: "deletar_atleta",
-    description: "Deleta um atleta pelo nome",
+    description: "Deleta atleta pelo nome",
     inputSchema: {
       type: "object",
-      properties: {
-        nome: { type: "string" }
-      },
+      properties: { nome: { type: "string" } },
       required: ["nome"]
     },
-    handler: async async ({ nome }) => {
+    handler: async ({ nome }) => {
       const atleta = await callApi("GET", `/athletes/${nome}`);
-      if (atleta?.id) {
-        return callApi("DELETE", `/athletes/${atleta.id}`);
-      }
+      if (atleta?.id) return callApi("DELETE", `/athletes/${atleta.id}`);
       return { status: "erro", detalhe: "Atleta não encontrado" };
     }
   },
   {
     name: "registrar_treino",
-    description: "Registra uma nova sessão de treino",
+    description: "Registra treino",
     inputSchema: {
       type: "object",
       properties: {
@@ -90,11 +81,11 @@ const tools = [
       },
       required: ["athlete_id", "details", "rpe", "duration_minutes"]
     },
-    handler: async (args) => callApi("POST", "/workouts/register", args)
+    handler: (args) => callApi("POST", "/workouts/register", args)
   },
   {
     name: "registrar_avaliacao",
-    description: "Registra os resultados de uma avaliação",
+    description: "Registra avaliação",
     inputSchema: {
       type: "object",
       properties: {
@@ -104,11 +95,11 @@ const tools = [
       },
       required: ["athlete_id", "assessment_type", "results"]
     },
-    handler: async (args) => callApi("POST", "/assessments/", args)
+    handler: (args) => callApi("POST", "/assessments/", args)
   },
   {
     name: "registrar_bem_estar",
-    description: "Registra o bem-estar diário de um atleta",
+    description: "Registra bem-estar diário",
     inputSchema: {
       type: "object",
       properties: {
@@ -120,11 +111,11 @@ const tools = [
       },
       required: ["athlete_id", "qualidade_sono", "nivel_estresse", "nivel_fadiga"]
     },
-    handler: async (args) => callApi("POST", "/wellness/log", args)
+    handler: (args) => callApi("POST", "/wellness/log", args)
   },
   {
     name: "gerar_mesociclo",
-    description: "Cria um plano de treino (mesociclo)",
+    description: "Gera mesociclo de treino",
     inputSchema: {
       type: "object",
       properties: {
@@ -136,29 +127,27 @@ const tools = [
       },
       required: ["athlete_id", "objective", "duration_weeks", "sessions_per_week", "progression_model"]
     },
-    handler: async (args) => callApi("POST", "/planning/generate-mesocycle", args)
+    handler: (args) => callApi("POST", "/planning/generate-mesocycle", args)
   },
   {
     name: "gerar_relatorio_atleta",
-    description: "Gera um relatório completo de performance de um atleta",
+    description: "Relatório de atleta",
     inputSchema: {
       type: "object",
-      properties: {
-        athlete_id: { type: "integer" }
-      },
+      properties: { athlete_id: { type: "integer" } },
       required: ["athlete_id"]
     },
-    handler: async ({ athlete_id }) => callApi("GET", `/reports/athlete-report/${athlete_id}`)
+    handler: ({ athlete_id }) => callApi("GET", `/reports/athlete-report/${athlete_id}`)
   },
   {
     name: "gerar_relatorio_equipe",
-    description: "Gera um relatório com o status de todos os atletas",
+    description: "Relatório de equipe",
     inputSchema: { type: "object", properties: {} },
-    handler: async () => callApi("GET", "/reports/team-report")
+    handler: () => callApi("GET", "/reports/team-report")
   },
   {
     name: "gerar_grafico_performance",
-    description: "Gera um gráfico de performance para um atleta",
+    description: "Gera gráfico de performance",
     inputSchema: {
       type: "object",
       properties: {
@@ -167,7 +156,7 @@ const tools = [
       },
       required: ["athlete_id", "metric_name"]
     },
-    handler: async (args) => callApi("GET", "/charts/performance-chart", {}, args)
+    handler: (args) => callApi("GET", "/charts/performance-chart", {}, args)
   }
 ];
 
@@ -185,17 +174,18 @@ app.get("/", (req, res) => {
   res.json({
     message: "Vector AI MCP Server (Node) está rodando",
     version: "1.0.0",
-    mcp_endpoint: "/:user/:app (SSE)",
+    mcp_endpoint: "/mcp (SSE)",
     tools_count: tools.length,
     vector_api_url: VECTOR_API_URL,
     status: "online"
   });
 });
 
-// Monta rotas SSE no estilo Pipedream
-app.use("/", mcp);
+// Monta SSE direto em /mcp
+app.use("/mcp", mcp);
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-  console.log(`🚀 Vector AI MCP rodando em http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Vector AI MCP rodando em http://0.0.0.0:${PORT}/mcp`);
 });
+

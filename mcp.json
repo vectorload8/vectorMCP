@@ -3,7 +3,7 @@
   "description": "Servidor MCP para integração com a Vector AI Sports Platform",
   "version": "1.0.0",
   "endpoints": {
-    "sse": "https://<seu-app>.up.railway.app/mcp"
+    "sse": "https://vectormcp-production.up.railway.app/mcp"
   },
   "capabilities": {
     "tools": true,

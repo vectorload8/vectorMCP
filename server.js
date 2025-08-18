@@ -6,7 +6,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const VECTOR_API_URL = process.env.VECTOR_API_URL || "https://vectorapi.up.railway.app/v1";
+const VECTOR_API_URL =
+  process.env.VECTOR_API_URL || "https://vectorapi.up.railway.app/v1";
 
 // ----------------- Helper -----------------
 async function callApi(method, endpoint, data = {}, params = {}) {
@@ -14,7 +15,7 @@ async function callApi(method, endpoint, data = {}, params = {}) {
     method,
     url: `${VECTOR_API_URL}${endpoint}`,
     data,
-    params
+    params,
   });
 
   try {
@@ -22,7 +23,7 @@ async function callApi(method, endpoint, data = {}, params = {}) {
       method,
       url: `${VECTOR_API_URL}${endpoint}`,
       data,
-      params
+      params,
     });
 
     console.log("✅ Resposta da API:", res.status, res.data);
@@ -30,17 +31,17 @@ async function callApi(method, endpoint, data = {}, params = {}) {
   } catch (err) {
     console.error("❌ Erro na API:", {
       status: err.response?.status,
-      detalhe: err.response?.data || err.message
+      detalhe: err.response?.data || err.message,
     });
     return {
       status: "erro",
       codigo: err.response?.status,
-      detalhe: err.response?.data || err.message
+      detalhe: err.response?.data || err.message,
     };
   }
 }
 
-// ----------------- Tools -----------------
+// ----------------- Tools adaptadas para os Schemas -----------------
 const tools = [
   // ----------------- Gestão de Atletas -----------------
   {
@@ -49,18 +50,36 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
-        customer_id: { type: "string" }, // obrigatório
-        name: { type: "string" },        // obrigatório
-        profile_data: { type: "object", default: {} }
+        customer_id: { type: "string" },
+        name: { type: "string" },
+        birth_date: { type: "string" },
+        sport: { type: "string" },
+        profile_data: {
+          type: "object",
+          properties: {
+            idade: { type: "string" },
+            sexo: { type: "string" },
+            peso_corporal_kg: { type: "string" },
+            altura_cm: { type: "string" },
+            fc_max: { type: "string" },
+            posicao: { type: "string" },
+            historico_lesoes: {
+              type: "array",
+              items: { type: "string" },
+            },
+          },
+        },
       },
-      required: ["customer_id", "name"]
+      required: ["customer_id", "name", "sport"],
     },
     handler: (args) =>
       callApi("POST", "/athletes/", {
         customer_id: args.customer_id,
         name: args.name,
-        profile_data: args.profile_data || {}
-      })
+        birth_date: args.birth_date,
+        sport: args.sport,
+        profile_data: args.profile_data || {},
+      }),
   },
   {
     name: "listar_atletas",
@@ -68,10 +87,10 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: { customer_id: { type: "string" } },
-      required: ["customer_id"]
+      required: ["customer_id"],
     },
-    handler: ({ customer_id }) =>
-      callApi("GET", `/athletes/?customer_id=${customer_id}`)
+    handler: (args) =>
+      callApi("GET", "/athletes/", {}, { customer_id: args.customer_id }),
   },
   {
     name: "buscar_atleta_pelo_nome",
@@ -80,12 +99,17 @@ const tools = [
       type: "object",
       properties: {
         customer_id: { type: "string" },
-        athlete_name: { type: "string" }
+        athlete_name: { type: "string" },
       },
-      required: ["customer_id", "athlete_name"]
+      required: ["customer_id", "athlete_name"],
     },
-    handler: ({ customer_id, athlete_name }) =>
-      callApi("GET", `/athletes/${athlete_name}?customer_id=${customer_id}`)
+    handler: (args) =>
+      callApi(
+        "GET",
+        `/athletes/${args.athlete_name}`,
+        {},
+        { customer_id: args.customer_id }
+      ),
   },
   {
     name: "deletar_atleta",
@@ -94,16 +118,23 @@ const tools = [
       type: "object",
       properties: {
         customer_id: { type: "string" },
-        athlete_name: { type: "string" }
+        athlete_name: { type: "string" },
       },
-      required: ["customer_id", "athlete_name"]
+      required: ["customer_id", "athlete_name"],
     },
-    handler: async ({ customer_id, athlete_name }) => {
-      const atleta = await callApi("GET", `/athletes/${athlete_name}?customer_id=${customer_id}`);
+    handler: async (args) => {
+      const atleta = await callApi(
+        "GET",
+        `/athletes/${args.athlete_name}`,
+        {},
+        { customer_id: args.customer_id }
+      );
       if (atleta?.id)
-        return callApi("DELETE", `/athletes/${atleta.id}?customer_id=${customer_id}`);
+        return callApi("DELETE", `/athletes/${atleta.id}`, {
+          customer_id: args.customer_id,
+        });
       return { status: "erro", detalhe: "Atleta não encontrado" };
-    }
+    },
   },
 
   // ----------------- Registro de Dados -----------------
@@ -116,17 +147,19 @@ const tools = [
         customer_id: { type: "string" },
         athlete_name: { type: "string" },
         workout_details: { type: "string" },
-        external_load_data: { type: "object" }
+        rpe: { type: "integer" },
+        duration_minutes: { type: "integer" },
       },
-      required: ["customer_id", "athlete_name", "workout_details"]
+      required: ["customer_id", "athlete_name", "workout_details"],
     },
     handler: (args) =>
       callApi("POST", "/workouts/", {
         customer_id: args.customer_id,
         athlete_name: args.athlete_name,
         workout_details: args.workout_details,
-        external_load_data: args.external_load_data || {}
-      })
+        rpe: args.rpe || null,
+        duration_minutes: args.duration_minutes || null,
+      }),
   },
   {
     name: "registrar_avaliacao",
@@ -136,18 +169,18 @@ const tools = [
       properties: {
         customer_id: { type: "string" },
         athlete_name: { type: "string" },
-        assessment_type: { type: "string" },
-        results: { type: "object" }
+        tipo_avaliacao: { type: "string" },
+        resultados: { type: "object" },
       },
-      required: ["customer_id", "athlete_name", "assessment_type", "results"]
+      required: ["customer_id", "athlete_name", "tipo_avaliacao", "resultados"],
     },
     handler: (args) =>
       callApi("POST", "/assessments/", {
         customer_id: args.customer_id,
         athlete_name: args.athlete_name,
-        assessment_type: args.assessment_type,
-        results: args.results
-      })
+        tipo_avaliacao: args.tipo_avaliacao,
+        resultados: args.resultados,
+      }),
   },
   {
     name: "registrar_bem_estar",
@@ -160,9 +193,9 @@ const tools = [
         qualidade_sono: { type: "string" },
         nivel_estresse: { type: "string" },
         dores_musculares: { type: "string" },
-        prontidao_cmj: { type: "string" }
+        prontidao_cmj: { type: "string" },
       },
-      required: ["customer_id", "athlete_name", "qualidade_sono", "nivel_estresse"]
+      required: ["customer_id", "athlete_name", "qualidade_sono", "nivel_estresse"],
     },
     handler: (args) =>
       callApi("POST", "/wellness/log", {
@@ -171,8 +204,8 @@ const tools = [
         qualidade_sono: args.qualidade_sono,
         nivel_estresse: args.nivel_estresse,
         dores_musculares: args.dores_musculares || "Nenhuma",
-        prontidao_cmj: args.prontidao_cmj || null
-      })
+        prontidao_cmj: args.prontidao_cmj || null,
+      }),
   },
 
   // ----------------- Planejamento -----------------
@@ -188,15 +221,15 @@ const tools = [
         start_date: { type: "string" },
         duracao_semanas: { type: "string" },
         progression_type: { type: "string" },
-        progression_details: { type: "object" }
+        progression_details: { type: "object" },
       },
       required: [
         "customer_id",
         "athlete_name",
         "meso_name",
         "duracao_semanas",
-        "progression_type"
-      ]
+        "progression_type",
+      ],
     },
     handler: (args) =>
       callApi("POST", "/planning/generate-mesocycle", {
@@ -206,8 +239,8 @@ const tools = [
         start_date: args.start_date,
         duracao_semanas: args.duracao_semanas,
         progression_type: args.progression_type,
-        progression_details: args.progression_details || {}
-      })
+        progression_details: args.progression_details || {},
+      }),
   },
 
   // ----------------- Relatórios -----------------
@@ -218,12 +251,17 @@ const tools = [
       type: "object",
       properties: {
         customer_id: { type: "string" },
-        athlete_name: { type: "string" }
+        athlete_name: { type: "string" },
       },
-      required: ["customer_id", "athlete_name"]
+      required: ["customer_id", "athlete_name"],
     },
-    handler: ({ customer_id, athlete_name }) =>
-      callApi("GET", `/reports/athlete-report/${athlete_name}?customer_id=${customer_id}`)
+    handler: (args) =>
+      callApi(
+        "GET",
+        `/reports/athlete-report/${args.athlete_name}`,
+        {},
+        { customer_id: args.customer_id }
+      ),
   },
   {
     name: "gerar_relatorio_equipe",
@@ -231,10 +269,10 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: { customer_id: { type: "string" } },
-      required: ["customer_id"]
+      required: ["customer_id"],
     },
-    handler: ({ customer_id }) =>
-      callApi("GET", `/reports/team-report?customer_id=${customer_id}`)
+    handler: (args) =>
+      callApi("GET", "/reports/team-report", {}, { customer_id: args.customer_id }),
   },
 
   // ----------------- Análises Gráficas -----------------
@@ -246,17 +284,22 @@ const tools = [
       properties: {
         customer_id: { type: "string" },
         athlete_name: { type: "string" },
-        metric_name: { type: "string" }
+        metric_name: { type: "string" },
       },
-      required: ["customer_id", "athlete_name", "metric_name"]
+      required: ["customer_id", "athlete_name", "metric_name"],
     },
     handler: (args) =>
-      callApi("GET", "/charts/performance-chart", {}, {
-        customer_id: args.customer_id,
-        athlete_name: args.athlete_name,
-        metric_name: args.metric_name
-      })
-  }
+      callApi(
+        "GET",
+        "/charts/performance-chart",
+        {},
+        {
+          customer_id: args.customer_id,
+          athlete_name: args.athlete_name,
+          metric_name: args.metric_name,
+        }
+      ),
+  },
 ];
 
 // ----------------- JSON-RPC Handler -----------------
@@ -268,7 +311,7 @@ app.post("/mcp", async (req, res) => {
     result = {
       protocolVersion: "2024-11-05",
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: "vector-ai-sports", version: "1.0.0" }
+      serverInfo: { name: "vector-ai-sports", version: "1.0.0" },
     };
   } else if (method === "tools/list") {
     result = { tools };
@@ -295,7 +338,7 @@ app.get("/", (req, res) => {
     mcp_endpoint: "/mcp (HTTP JSON-RPC)",
     tools_count: tools.length,
     vector_api_url: VECTOR_API_URL,
-    status: "online"
+    status: "online",
   });
 });
 
@@ -303,4 +346,3 @@ const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`🚀 Vector AI MCP rodando em http://0.0.0.0:${PORT}/mcp`);
 });
-

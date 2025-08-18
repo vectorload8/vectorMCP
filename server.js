@@ -40,8 +40,9 @@ async function callApi(method, endpoint, data = {}, params = {}) {
     };
   }
 }
-// ----------------- Tools -----------------
+// ----------------- Tools adaptadas para os Schemas -----------------
 const tools = [
+  // ----------------- Gestão de Atletas -----------------
   {
     name: "adicionar_atleta",
     description: "Cadastra um novo atleta",
@@ -49,13 +50,15 @@ const tools = [
       type: "object",
       properties: {
         name: { type: "string" },
-        birth_date: { type: "string", format: "date" },
-        sport: { type: "string" },
-        details: { type: "object", default: {} }
+        profile_data: { type: "object", default: {} }
       },
-      required: ["name", "birth_date", "sport"]
+      required: ["name"]
     },
-    handler: (args) => callApi("POST", "/athletes/", args)
+    handler: (args) =>
+      callApi("POST", "/athletes/", {
+        name: args.name,
+        profile_data: args.profile_data || {}
+      })
   },
   {
     name: "listar_atletas",
@@ -68,116 +71,154 @@ const tools = [
     description: "Busca atleta pelo nome",
     inputSchema: {
       type: "object",
-      properties: { nome: { type: "string" } },
-      required: ["nome"]
+      properties: { athlete_name: { type: "string" } },
+      required: ["athlete_name"]
     },
-    handler: ({ nome }) => callApi("GET", `/athletes/${nome}`)
+    handler: ({ athlete_name }) =>
+      callApi("GET", `/athletes/${athlete_name}`)
   },
   {
     name: "deletar_atleta",
-    description: "Deleta atleta pelo nome",
+    description: "Remove atleta pelo nome",
     inputSchema: {
       type: "object",
-      properties: { nome: { type: "string" } },
-      required: ["nome"]
+      properties: { athlete_name: { type: "string" } },
+      required: ["athlete_name"]
     },
-    handler: async ({ nome }) => {
-      const atleta = await callApi("GET", `/athletes/${nome}`);
+    handler: async ({ athlete_name }) => {
+      const atleta = await callApi("GET", `/athletes/${athlete_name}`);
       if (atleta?.id) return callApi("DELETE", `/athletes/${atleta.id}`);
       return { status: "erro", detalhe: "Atleta não encontrado" };
     }
   },
+
+  // ----------------- Registro de Dados -----------------
   {
     name: "registrar_treino",
-    description: "Registra treino",
+    description: "Registra treino para atleta",
     inputSchema: {
       type: "object",
       properties: {
-        athlete_id: { type: "integer" },
-        details: { type: "string" },
-        rpe: { type: "integer", minimum: 1, maximum: 10 },
-        duration_minutes: { type: "integer", minimum: 1 }
+        athlete_name: { type: "string" },
+        workout_details: { type: "string" }
       },
-      required: ["athlete_id", "details", "rpe", "duration_minutes"]
+      required: ["athlete_name", "workout_details"]
     },
-    handler: (args) => callApi("POST", "/workouts/register", args)
+    handler: (args) =>
+      callApi("POST", "/workouts/", {
+        athlete_name: args.athlete_name,
+        workout_details: args.workout_details
+      })
   },
   {
     name: "registrar_avaliacao",
-    description: "Registra avaliação",
+    description: "Registra avaliação formal",
     inputSchema: {
       type: "object",
       properties: {
-        athlete_id: { type: "integer" },
-        assessment_type: { type: "string" },
-        results: { type: "object" }
+        athlete_name: { type: "string" },
+        tipo_avaliacao: { type: "string" },
+        resultados: { type: "object" }
       },
-      required: ["athlete_id", "assessment_type", "results"]
+      required: ["athlete_name", "tipo_avaliacao", "resultados"]
     },
-    handler: (args) => callApi("POST", "/assessments/", args)
+    handler: (args) =>
+      callApi("POST", "/assessments/", {
+        athlete_name: args.athlete_name,
+        tipo_avaliacao: args.tipo_avaliacao,
+        resultados: args.resultados
+      })
   },
   {
     name: "registrar_bem_estar",
-    description: "Registra bem-estar diário",
+    description: "Registra bem-estar diário do atleta",
     inputSchema: {
       type: "object",
       properties: {
-        athlete_id: { type: "integer" },
-        qualidade_sono: { type: "integer", minimum: 1, maximum: 10 },
-        nivel_estresse: { type: "integer", minimum: 1, maximum: 10 },
-        nivel_fadiga: { type: "integer", minimum: 1, maximum: 10 },
-        dores_musculares: { type: "string", default: "Nenhuma" }
+        athlete_name: { type: "string" },
+        qualidade_sono: { type: "string" },
+        nivel_estresse: { type: "string" },
+        dores_musculares: { type: "string" },
+        prontidao_cmj: { type: "string" }
       },
-      required: ["athlete_id", "qualidade_sono", "nivel_estresse", "nivel_fadiga"]
+      required: ["athlete_name", "qualidade_sono", "nivel_estresse"]
     },
-    handler: (args) => callApi("POST", "/wellness/log", args)
+    handler: (args) =>
+      callApi("POST", "/wellness/log", {
+        athlete_name: args.athlete_name,
+        qualidade_sono: args.qualidade_sono,
+        nivel_estresse: args.nivel_estresse,
+        dores_musculares: args.dores_musculares || "Nenhuma",
+        prontidao_cmj: args.prontidao_cmj || null
+      })
   },
+
+  // ----------------- Planejamento -----------------
   {
     name: "gerar_mesociclo",
     description: "Gera mesociclo de treino",
     inputSchema: {
       type: "object",
       properties: {
-        athlete_id: { type: "integer" },
-        objective: { type: "string" },
-        duration_weeks: { type: "integer", minimum: 1, maximum: 52 },
-        sessions_per_week: { type: "integer", minimum: 1, maximum: 14 },
-        progression_model: { type: "string" }
+        athlete_name: { type: "string" },
+        meso_name: { type: "string" },
+        start_date: { type: "string" },
+        duracao_semanas: { type: "string" },
+        progression_type: { type: "string" },
+        progression_details: { type: "object" }
       },
-      required: ["athlete_id", "objective", "duration_weeks", "sessions_per_week", "progression_model"]
+      required: ["athlete_name", "meso_name", "duracao_semanas", "progression_type"]
     },
-    handler: (args) => callApi("POST", "/planning/generate-mesocycle", args)
+    handler: (args) =>
+      callApi("POST", "/planning/generate-mesocycle", {
+        athlete_name: args.athlete_name,
+        meso_name: args.meso_name,
+        start_date: args.start_date,
+        duracao_semanas: args.duracao_semanas,
+        progression_type: args.progression_type,
+        progression_details: args.progression_details || {}
+      })
   },
+
+  // ----------------- Relatórios -----------------
   {
     name: "gerar_relatorio_atleta",
-    description: "Relatório de atleta",
+    description: "Gera relatório completo de atleta",
     inputSchema: {
       type: "object",
-      properties: { athlete_id: { type: "integer" } },
-      required: ["athlete_id"]
+      properties: { athlete_name: { type: "string" } },
+      required: ["athlete_name"]
     },
-    handler: ({ athlete_id }) => callApi("GET", `/reports/athlete-report/${athlete_id}`)
+    handler: ({ athlete_name }) =>
+      callApi("GET", `/reports/athlete-report/${athlete_name}`)
   },
   {
     name: "gerar_relatorio_equipe",
-    description: "Relatório de equipe",
+    description: "Gera relatório consolidado da equipe",
     inputSchema: { type: "object", properties: {} },
     handler: () => callApi("GET", "/reports/team-report")
   },
+
+  // ----------------- Análises Gráficas -----------------
   {
     name: "gerar_grafico_performance",
-    description: "Gera gráfico de performance",
+    description: "Gera gráfico de performance de uma métrica",
     inputSchema: {
       type: "object",
       properties: {
-        athlete_id: { type: "integer" },
+        athlete_name: { type: "string" },
         metric_name: { type: "string" }
       },
-      required: ["athlete_id", "metric_name"]
+      required: ["athlete_name", "metric_name"]
     },
-    handler: (args) => callApi("GET", "/charts/performance-chart", {}, args)
+    handler: (args) =>
+      callApi("GET", "/charts/performance-chart", {}, {
+        athlete_name: args.athlete_name,
+        metric_name: args.metric_name
+      })
   }
 ];
+
 
 // ----------------- JSON-RPC Handler -----------------
 app.post("/mcp", async (req, res) => {

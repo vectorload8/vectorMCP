@@ -124,7 +124,7 @@ tool_manager = ToolManager()
 
 # Registrando todas as funções com o schema dos parâmetros em formato de dicionário
 tool_manager.add_tool(FunctionTool(name="adicionar_atleta", fn=adicionar_atleta, parameters=AdicionarAtletaInput.model_json_schema()))
-tool_manager.add_tool(FunctionTool(name="listar_atletas", fn=listar_atletas))
+tool_manager.add_tool(FunctionTool(name="listar_atletas", fn=listar_atletas, parameters={}))
 tool_manager.add_tool(FunctionTool(name="buscar_atleta_pelo_nome", fn=buscar_atleta_pelo_nome, parameters=AtletaInput.model_json_schema()))
 tool_manager.add_tool(FunctionTool(name="deletar_atleta", fn=deletar_atleta, parameters=AtletaInput.model_json_schema()))
 tool_manager.add_tool(FunctionTool(name="registrar_treino", fn=registrar_treino, parameters=RegistrarTreinoInput.model_json_schema()))
@@ -132,7 +132,7 @@ tool_manager.add_tool(FunctionTool(name="registrar_avaliacao", fn=registrar_aval
 tool_manager.add_tool(FunctionTool(name="registrar_bem_estar", fn=registrar_bem_estar, parameters=RegistrarBemEstarInput.model_json_schema()))
 tool_manager.add_tool(FunctionTool(name="gerar_mesociclo", fn=gerar_mesociclo, parameters=GerarMesocicloInput.model_json_schema()))
 tool_manager.add_tool(FunctionTool(name="gerar_relatorio_atleta", fn=gerar_relatorio_atleta, parameters=RelatorioAtletaInput.model_json_schema()))
-tool_manager.add_tool(FunctionTool(name="gerar_relatorio_equipe", fn=gerar_relatorio_equipe))
+tool_manager.add_tool(FunctionTool(name="gerar_relatorio_equipe", fn=gerar_relatorio_equipe, parameters={}))
 tool_manager.add_tool(FunctionTool(name="gerar_grafico_performance", fn=gerar_grafico_performance, parameters=GraficoInput.model_json_schema()))
 
 # --- 5. CRIAÇÃO DO SERVIDOR MCP ---

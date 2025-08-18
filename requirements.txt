@@ -1,5 +1,6 @@
-fastmcp
-fastapi
-uvicorn
+mcp
 httpx
 pydantic
+uvicorn
+fastapi
+python-multipart

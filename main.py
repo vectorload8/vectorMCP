@@ -136,7 +136,9 @@ tool_manager.add_tool(FunctionTool(name="gerar_relatorio_equipe", fn=gerar_relat
 tool_manager.add_tool(FunctionTool(name="gerar_grafico_performance", fn=gerar_grafico_performance, parameters=GraficoInput.model_json_schema()))
 
 # --- 5. CRIAÇÃO DO SERVIDOR MCP ---
-app = FastMCP(tools=tool_manager.tools)
+app = FastMCP(
+    tools=tool_manager.get_tools() # <-- CORREÇÃO FINAL: Usamos o método get_tools() para obter a lista.
+)
 
 print("Servidor de Ferramentas VECTOR AI (Cliente HTTP) configurado e pronto.")
 print("Execute com: uvicorn main:app --reload --port 8001")

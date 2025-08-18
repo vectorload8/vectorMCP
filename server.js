@@ -48,16 +48,13 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
-        name: { type: "string" },
+        customer_id: { type: "string" }, // obrigatório
+        athlete_name: { type: "string" }, // era "name"
         profile_data: { type: "object", default: {} }
       },
-      required: ["name"]
+      required: ["customer_id", "athlete_name"]
     },
-    handler: (args) =>
-      callApi("POST", "/athletes/", {
-        name: args.name,
-        profile_data: args.profile_data || {}
-      })
+    handler: (args) => callApi("POST", "/athletes/", args)
   },
   {
     name: "listar_atletas",

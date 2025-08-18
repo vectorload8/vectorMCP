@@ -3,9 +3,9 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from datetime import date
 from fastmcp import FastMCP
-from fastmcp.tools import ToolManager, FunctionTool
 import os
 import logging
+import asyncio
 
 # Configurar logging detalhado
 logging.basicConfig(
@@ -29,7 +29,7 @@ VECTOR_API_URL = VECTOR_API_URL.rstrip('/')
 logger.info(f"Final VECTOR_API_URL: {VECTOR_API_URL}")
 logger.info("Configuração inicial concluída com sucesso")
 
-# --- 2. MODELOS DE INPUT (COM MELHORIAS) ---
+# --- 2. MODELOS DE INPUT ---
 class AdicionarAtletaInput(BaseModel):
     name: str = Field(..., description="Nome completo do atleta.", min_length=1)
     birth_date: date = Field(..., description="Data de nascimento no formato AAAA-MM-DD.")
@@ -79,7 +79,7 @@ class GraficoInput(BaseModel):
     athlete_id: int = Field(..., description="ID numérico do atleta.", gt=0)
     metric_name: str = Field(..., description="Nome da métrica para gerar o gráfico (ex: 'acwr', 'strain', 'monotony').", min_length=1)
 
-# --- 3. FUNÇÕES-FERRAMENTA (CORRIGIDAS) ---
+# --- 3. FUNÇÃO AUXILIAR ---
 async def _call_api(method: str, endpoint: str, json_data: dict = None, params: dict = None) -> Dict[str, Any]:
     """Função auxiliar para fazer chamadas HTTP e tratar respostas."""
     logger.debug(f"_call_api called - method: {method}, endpoint: {endpoint}")
@@ -96,7 +96,7 @@ async def _call_api(method: str, endpoint: str, json_data: dict = None, params: 
                 url, 
                 json=json_data, 
                 params=params, 
-                timeout=10.0  # Timeout reduzido
+                timeout=10.0
             )
             logger.info(f"Response status: {response.status_code}")
             response.raise_for_status()
@@ -127,6 +127,16 @@ async def _call_api(method: str, endpoint: str, json_data: dict = None, params: 
             logger.error(f"Unexpected error in _call_api: {str(e)}", exc_info=True)
             return {"status": "erro_geral", "detalhe": str(e)}
 
+# --- 4. CRIAR INSTÂNCIA DO FASTMCP ---
+logger.info("Criando instância do FastMCP...")
+
+app = FastMCP("Vector AI Sports MCP Server")
+logger.info("FastMCP criado com sucesso")
+
+# --- 5. REGISTRAR TOOLS USANDO DECORATORS ---
+logger.info("Registrando tools usando decorators...")
+
+@app.tool()
 async def adicionar_atleta(params: AdicionarAtletaInput) -> Dict[str, Any]:
     """Cadastra um novo atleta no sistema."""
     logger.info(f"adicionar_atleta called with params: {params}")
@@ -138,7 +148,8 @@ async def adicionar_atleta(params: AdicionarAtletaInput) -> Dict[str, Any]:
         logger.error(f"Error in adicionar_atleta: {str(e)}", exc_info=True)
         return {"status": "erro_geral", "detalhe": str(e)}
 
-async def listar_atletas() -> Dict[str, Any]:  # Mudei o tipo de retorno para consistência
+@app.tool()
+async def listar_atletas() -> Dict[str, Any]:
     """Retorna uma lista de todos os atletas cadastrados."""
     logger.info("listar_atletas called")
     try:
@@ -149,6 +160,7 @@ async def listar_atletas() -> Dict[str, Any]:  # Mudei o tipo de retorno para co
         logger.error(f"Error in listar_atletas: {str(e)}", exc_info=True)
         return {"status": "erro_geral", "detalhe": str(e)}
 
+@app.tool()
 async def buscar_atleta_pelo_nome(params: AtletaInput) -> Dict[str, Any]:
     """Busca os detalhes de um atleta específico pelo nome."""
     logger.info(f"buscar_atleta_pelo_nome called with params: {params}")
@@ -160,12 +172,13 @@ async def buscar_atleta_pelo_nome(params: AtletaInput) -> Dict[str, Any]:
         logger.error(f"Error in buscar_atleta_pelo_nome: {str(e)}", exc_info=True)
         return {"status": "erro_geral", "detalhe": str(e)}
 
+@app.tool()
 async def deletar_atleta(params: AtletaInput) -> Dict[str, Any]:
     """Deleta um atleta do sistema pelo nome."""
     logger.info(f"deletar_atleta called with params: {params}")
     try:
         # Primeiro busca o atleta
-        atleta_dados = await buscar_atleta_pelo_nome(params)
+        atleta_dados = await _call_api("GET", f"/athletes/{params.nome}")
         logger.debug(f"Athlete data found: {atleta_dados}")
         
         # Verifica se houve erro na busca
@@ -192,126 +205,92 @@ async def deletar_atleta(params: AtletaInput) -> Dict[str, Any]:
         logger.error(f"Error in deletar_atleta: {str(e)}", exc_info=True)
         return {"status": "erro_geral", "detalhe": str(e)}
 
+@app.tool()
 async def registrar_treino(params: RegistrarTreinoInput) -> Dict[str, Any]:
     """Registra uma nova sessão de treino para um atleta."""
-    return await _call_api("POST", "/workouts/register", json_data=params.model_dump(mode='json'))
+    logger.info(f"registrar_treino called with params: {params}")
+    try:
+        result = await _call_api("POST", "/workouts/register", json_data=params.model_dump(mode='json'))
+        logger.info(f"registrar_treino result: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in registrar_treino: {str(e)}", exc_info=True)
+        return {"status": "erro_geral", "detalhe": str(e)}
 
+@app.tool()
 async def registrar_avaliacao(params: RegistrarAvaliacaoInput) -> Dict[str, Any]:
     """Registra os resultados de uma avaliação de performance formal."""
-    return await _call_api("POST", "/assessments/", json_data=params.model_dump(mode='json'))
+    logger.info(f"registrar_avaliacao called with params: {params}")
+    try:
+        result = await _call_api("POST", "/assessments/", json_data=params.model_dump(mode='json'))
+        logger.info(f"registrar_avaliacao result: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in registrar_avaliacao: {str(e)}", exc_info=True)
+        return {"status": "erro_geral", "detalhe": str(e)}
 
+@app.tool()
 async def registrar_bem_estar(params: RegistrarBemEstarInput) -> Dict[str, Any]:
     """Registra o estado de bem-estar diário de um atleta."""
-    return await _call_api("POST", "/wellness/log", json_data=params.model_dump(mode='json'))
+    logger.info(f"registrar_bem_estar called with params: {params}")
+    try:
+        result = await _call_api("POST", "/wellness/log", json_data=params.model_dump(mode='json'))
+        logger.info(f"registrar_bem_estar result: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in registrar_bem_estar: {str(e)}", exc_info=True)
+        return {"status": "erro_geral", "detalhe": str(e)}
 
+@app.tool()
 async def gerar_mesociclo(params: GerarMesocicloInput) -> Dict[str, Any]:
     """Cria um plano de treino estruturado (mesociclo) para um atleta."""
-    return await _call_api("POST", "/planning/generate-mesocycle", json_data=params.model_dump(mode='json'))
+    logger.info(f"gerar_mesociclo called with params: {params}")
+    try:
+        result = await _call_api("POST", "/planning/generate-mesocycle", json_data=params.model_dump(mode='json'))
+        logger.info(f"gerar_mesociclo result: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in gerar_mesociclo: {str(e)}", exc_info=True)
+        return {"status": "erro_geral", "detalhe": str(e)}
 
+@app.tool()
 async def gerar_relatorio_atleta(params: RelatorioAtletaInput) -> Dict[str, Any]:
     """Gera um relatório de performance completo para um atleta específico."""
-    return await _call_api("GET", f"/reports/athlete-report/{params.athlete_id}")
+    logger.info(f"gerar_relatorio_atleta called with params: {params}")
+    try:
+        result = await _call_api("GET", f"/reports/athlete-report/{params.athlete_id}")
+        logger.info(f"gerar_relatorio_atleta result: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in gerar_relatorio_atleta: {str(e)}", exc_info=True)
+        return {"status": "erro_geral", "detalhe": str(e)}
 
+@app.tool()
 async def gerar_relatorio_equipe() -> Dict[str, Any]:
     """Gera um relatório resumido com o status de todos os atletas da equipe."""
-    return await _call_api("GET", "/reports/team-report")
+    logger.info("gerar_relatorio_equipe called")
+    try:
+        result = await _call_api("GET", "/reports/team-report")
+        logger.info(f"gerar_relatorio_equipe result: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in gerar_relatorio_equipe: {str(e)}", exc_info=True)
+        return {"status": "erro_geral", "detalhe": str(e)}
 
+@app.tool()
 async def gerar_grafico_performance(params: GraficoInput) -> Dict[str, Any]:
     """Gera um link para uma imagem de gráfico de performance para um atleta e uma métrica."""
-    return await _call_api("GET", "/charts/performance-chart", params=params.model_dump(mode='json'))
-
-# --- 4. CONFIGURAÇÃO DO GERENCIADOR DE FERRAMENTAS (CORRIGIDO) ---
-logger.info("Configurando gerenciador de ferramentas...")
-
-try:
-    tool_manager = ToolManager()
-    logger.info("ToolManager criado com sucesso")
-
-    # Registrando todas as funções com o schema dos parâmetros
-    tools_to_register = [
-        ("adicionar_atleta", adicionar_atleta, AdicionarAtletaInput.model_json_schema()),
-        ("listar_atletas", listar_atletas, {}),
-        ("buscar_atleta_pelo_nome", buscar_atleta_pelo_nome, AtletaInput.model_json_schema()),
-        ("deletar_atleta", deletar_atleta, AtletaInput.model_json_schema()),
-        ("registrar_treino", registrar_treino, RegistrarTreinoInput.model_json_schema()),
-        ("registrar_avaliacao", registrar_avaliacao, RegistrarAvaliacaoInput.model_json_schema()),
-        ("registrar_bem_estar", registrar_bem_estar, RegistrarBemEstarInput.model_json_schema()),
-        ("gerar_mesociclo", gerar_mesociclo, GerarMesocicloInput.model_json_schema()),
-        ("gerar_relatorio_atleta", gerar_relatorio_atleta, RelatorioAtletaInput.model_json_schema()),
-        ("gerar_relatorio_equipe", gerar_relatorio_equipe, {}),
-        ("gerar_grafico_performance", gerar_grafico_performance, GraficoInput.model_json_schema()),
-    ]
-
-    for tool_name, tool_fn, tool_params in tools_to_register:
-        try:
-            logger.info(f"Registering tool: {tool_name}")
-            tool_manager.add_tool(FunctionTool(name=tool_name, fn=tool_fn, parameters=tool_params))
-            logger.debug(f"Tool {tool_name} registered successfully")
-        except Exception as e:
-            logger.error(f"Failed to register tool {tool_name}: {str(e)}", exc_info=True)
-            raise
-
-    logger.info("Todas as ferramentas registradas com sucesso")
-
-except Exception as e:
-    logger.error(f"Error setting up tool manager: {str(e)}", exc_info=True)
-    raise
-
-# --- 5. CRIAÇÃO DO SERVIDOR MCP (CORRIGIDO) ---
-import asyncio
-
-async def init_server():
-    """Inicializa o servidor MCP de forma assíncrona."""
-    logger.info("Iniciando inicialização do servidor MCP...")
+    logger.info(f"gerar_grafico_performance called with params: {params}")
     try:
-        logger.info("Obtendo lista de tools do ToolManager...")
-        tools = await tool_manager.get_tools()
-        logger.info(f"Tools obtidas com sucesso. Quantidade: {len(tools) if tools else 0}")
-        logger.debug(f"Tools: {[tool.name if hasattr(tool, 'name') else str(tool) for tool in tools] if tools else 'None'}")
-        
-        logger.info("Criando instância do FastMCP...")
-        app = FastMCP(tools=tools)
-        logger.info("Servidor MCP inicializado com sucesso")
-        return app
-        
+        result = await _call_api("GET", "/charts/performance-chart", params=params.model_dump(mode='json'))
+        logger.info(f"gerar_grafico_performance result: {result}")
+        return result
     except Exception as e:
-        logger.error(f"Erro ao inicializar servidor MCP: {str(e)}", exc_info=True)
-        raise
+        logger.error(f"Error in gerar_grafico_performance: {str(e)}", exc_info=True)
+        return {"status": "erro_geral", "detalhe": str(e)}
 
-# Função para inicializar de forma síncrona sem conflito com o event loop
-def create_app():
-    """Cria a aplicação de forma síncrona."""
-    logger.info("Executando inicialização do servidor...")
-    try:
-        # Verifica se já existe um event loop rodando
-        try:
-            loop = asyncio.get_running_loop()
-            logger.info("Event loop já está rodando, usando create_task")
-            # Se já existe um loop, criamos uma task
-            import concurrent.futures
-            import threading
-            
-            # Executa em uma nova thread para evitar conflito
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(asyncio.run, init_server())
-                app = future.result()
-                logger.info("Servidor inicializado via ThreadPoolExecutor")
-                return app
-                
-        except RuntimeError:
-            # Não há event loop rodando, podemos usar asyncio.run
-            logger.info("Nenhum event loop detectado, usando asyncio.run")
-            app = asyncio.run(init_server())
-            logger.info("Servidor inicializado via asyncio.run")
-            return app
-            
-    except Exception as e:
-        logger.error(f"Falha crítica na inicialização: {str(e)}", exc_info=True)
-        raise
-
-# Inicializa o servidor
-app = create_app()
-
+# --- 6. FINALIZAÇÃO ---
+logger.info("Todas as tools registradas com sucesso")
 print("🚀 Servidor de Ferramentas VECTOR AI (Cliente HTTP) configurado e pronto.")
 print("📋 Execute com: uvicorn main:app --reload --port 8001")
 print("📊 Logs detalhados habilitados para debugging")

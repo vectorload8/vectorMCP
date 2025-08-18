@@ -278,18 +278,42 @@ async def init_server():
         logger.error(f"Erro ao inicializar servidor MCP: {str(e)}", exc_info=True)
         raise
 
-# Inicializa o servidor de forma síncrona
-logger.info("Executando inicialização assíncrona do servidor...")
-try:
-    app = asyncio.run(init_server())
-    logger.info("Servidor inicializado e pronto para uso")
-except Exception as e:
-    logger.error(f"Falha crítica na inicialização: {str(e)}", exc_info=True)
-    raise
+# Função para inicializar de forma síncrona sem conflito com o event loop
+def create_app():
+    """Cria a aplicação de forma síncrona."""
+    logger.info("Executando inicialização do servidor...")
+    try:
+        # Verifica se já existe um event loop rodando
+        try:
+            loop = asyncio.get_running_loop()
+            logger.info("Event loop já está rodando, usando create_task")
+            # Se já existe um loop, criamos uma task
+            import concurrent.futures
+            import threading
+            
+            # Executa em uma nova thread para evitar conflito
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, init_server())
+                app = future.result()
+                logger.info("Servidor inicializado via ThreadPoolExecutor")
+                return app
+                
+        except RuntimeError:
+            # Não há event loop rodando, podemos usar asyncio.run
+            logger.info("Nenhum event loop detectado, usando asyncio.run")
+            app = asyncio.run(init_server())
+            logger.info("Servidor inicializado via asyncio.run")
+            return app
+            
+    except Exception as e:
+        logger.error(f"Falha crítica na inicialização: {str(e)}", exc_info=True)
+        raise
+
+# Inicializa o servidor
+app = create_app()
 
 print("🚀 Servidor de Ferramentas VECTOR AI (Cliente HTTP) configurado e pronto.")
 print("📋 Execute com: uvicorn main:app --reload --port 8001")
 print("📊 Logs detalhados habilitados para debugging")
 logger.info("=== SERVIDOR PRONTO PARA CONEXÕES ===")
-logger.info(f"Total de tools disponíveis: {len(asyncio.run(tool_manager.get_tools())) if tool_manager else 'N/A'}")
 logger.info("Para testar a conectividade, verifique se VECTOR_API_URL está acessível")

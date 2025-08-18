@@ -9,7 +9,6 @@ app.use(express.json());
 const VECTOR_API_URL = process.env.VECTOR_API_URL || "https://vectorapi.up.railway.app/v1";
 
 // ----------------- Helper -----------------
-// ----------------- Helper -----------------
 async function callApi(method, endpoint, data = {}, params = {}) {
   console.log("📡 Enviando requisição para API:", {
     method,

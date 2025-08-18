@@ -3,16 +3,13 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Any
 from datetime import date
 from fastmcp import FastMCP
-from fastmcp.tools import ToolManager, FunctionTool
+from fastmtcp.tools import ToolManager, FunctionTool
 import os
 
 # --- 1. CONFIGURAÇÃO ---
-# Endereço da sua API Backend que está rodando
 VECTOR_API_URL = os.getenv("VECTOR_API_URL")
 
-# --- 2. MODELOS DE INPUT (PARÂMETROS DAS FERRAMENTAS) ---
-# Nenhuma alteração nesta seção
-
+# --- 2. MODELOS DE INPUT (Nenhuma alteração aqui) ---
 class AdicionarAtletaInput(BaseModel):
     name: str = Field(..., description="Nome completo do atleta.")
     birth_date: date = Field(..., description="Data de nascimento no formato AAAA-MM-DD.")
@@ -62,10 +59,7 @@ class GraficoInput(BaseModel):
     athlete_id: int = Field(..., description="ID numérico do atleta.")
     metric_name: str = Field(..., description="Nome da métrica para gerar o gráfico (ex: 'acwr', 'strain', 'monotony').")
 
-
-# --- 3. FUNÇÕES-FERRAMENTA (CHAMADAS À API) ---
-# Alteração mínima: troquei .dict() por .model_dump(mode='json') para compatibilidade com Pydantic v2
-
+# --- 3. FUNÇÕES-FERRAMENTA (Nenhuma alteração aqui) ---
 async def _call_api(method: str, endpoint: str, json_data: dict = None, params: dict = None) -> Dict[str, Any]:
     """Função auxiliar para fazer chamadas HTTP e tratar respostas."""
     async with httpx.AsyncClient() as client:
@@ -128,21 +122,21 @@ async def gerar_grafico_performance(params: GraficoInput) -> Dict[str, Any]:
 # --- 4. CONFIGURAÇÃO DO GERENCIADOR DE FERRAMENTAS (SEÇÃO CORRIGIDA) ---
 tool_manager = ToolManager()
 
-# Registrando todas as funções com os nomes de parâmetros corretos
-tool_manager.add_tool(FunctionTool(name="adicionar_atleta", fn=adicionar_atleta, parameters=AdicionarAtletaInput))
+# Registrando todas as funções com o schema dos parâmetros em formato de dicionário
+tool_manager.add_tool(FunctionTool(name="adicionar_atleta", fn=adicionar_atleta, parameters=AdicionarAtletaInput.model_json_schema()))
 tool_manager.add_tool(FunctionTool(name="listar_atletas", fn=listar_atletas))
-tool_manager.add_tool(FunctionTool(name="buscar_atleta_pelo_nome", fn=buscar_atleta_pelo_nome, parameters=AtletaInput))
-tool_manager.add_tool(FunctionTool(name="deletar_atleta", fn=deletar_atleta, parameters=AtletaInput))
-tool_manager.add_tool(FunctionTool(name="registrar_treino", fn=registrar_treino, parameters=RegistrarTreinoInput))
-tool_manager.add_tool(FunctionTool(name="registrar_avaliacao", fn=registrar_avaliacao, parameters=RegistrarAvaliacaoInput))
-tool_manager.add_tool(FunctionTool(name="registrar_bem_estar", fn=registrar_bem_estar, parameters=RegistrarBemEstarInput))
-tool_manager.add_tool(FunctionTool(name="gerar_mesociclo", fn=gerar_mesociclo, parameters=GerarMesocicloInput))
-tool_manager.add_tool(FunctionTool(name="gerar_relatorio_atleta", fn=gerar_relatorio_atleta, parameters=RelatorioAtletaInput))
+tool_manager.add_tool(FunctionTool(name="buscar_atleta_pelo_nome", fn=buscar_atleta_pelo_nome, parameters=AtletaInput.model_json_schema()))
+tool_manager.add_tool(FunctionTool(name="deletar_atleta", fn=deletar_atleta, parameters=AtletaInput.model_json_schema()))
+tool_manager.add_tool(FunctionTool(name="registrar_treino", fn=registrar_treino, parameters=RegistrarTreinoInput.model_json_schema()))
+tool_manager.add_tool(FunctionTool(name="registrar_avaliacao", fn=registrar_avaliacao, parameters=RegistrarAvaliacaoInput.model_json_schema()))
+tool_manager.add_tool(FunctionTool(name="registrar_bem_estar", fn=registrar_bem_estar, parameters=RegistrarBemEstarInput.model_json_schema()))
+tool_manager.add_tool(FunctionTool(name="gerar_mesociclo", fn=gerar_mesociclo, parameters=GerarMesocicloInput.model_json_schema()))
+tool_manager.add_tool(FunctionTool(name="gerar_relatorio_atleta", fn=gerar_relatorio_atleta, parameters=RelatorioAtletaInput.model_json_schema()))
 tool_manager.add_tool(FunctionTool(name="gerar_relatorio_equipe", fn=gerar_relatorio_equipe))
-tool_manager.add_tool(FunctionTool(name="gerar_grafico_performance", fn=gerar_grafico_performance, parameters=GraficoInput))
+tool_manager.add_tool(FunctionTool(name="gerar_grafico_performance", fn=gerar_grafico_performance, parameters=GraficoInput.model_json_schema()))
 
 # --- 5. CRIAÇÃO DO SERVIDOR MCP ---
 app = FastMCP(tools=tool_manager.tools)
 
 print("Servidor de Ferramentas VECTOR AI (Cliente HTTP) configurado e pronto.")
-print("Execute com: uvicorn main_provider:app --reload --port 8001")
+print("Execute com: uvicorn main:app --reload --port 8001")

@@ -39,7 +39,8 @@ async function callApi(method, endpoint, data = {}, params = {}) {
     };
   }
 }
-// ----------------- Tools adaptadas para os Schemas -----------------
+
+// ----------------- Tools -----------------
 const tools = [
   // ----------------- Gestão de Atletas -----------------
   {
@@ -48,8 +49,8 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
-        customer_id: { type: "string" }, // obrigatório
-        athlete_name: { type: "string" }, // era "name"
+        customer_id: { type: "string" },
+        athlete_name: { type: "string" },
         profile_data: { type: "object", default: {} }
       },
       required: ["customer_id", "athlete_name"]
@@ -59,31 +60,43 @@ const tools = [
   {
     name: "listar_atletas",
     description: "Lista atletas cadastrados",
-    inputSchema: { type: "object", properties: {} },
-    handler: () => callApi("GET", "/athletes/")
+    inputSchema: {
+      type: "object",
+      properties: { customer_id: { type: "string" } },
+      required: ["customer_id"]
+    },
+    handler: ({ customer_id }) =>
+      callApi("GET", `/athletes/?customer_id=${customer_id}`)
   },
   {
     name: "buscar_atleta_pelo_nome",
     description: "Busca atleta pelo nome",
     inputSchema: {
       type: "object",
-      properties: { athlete_name: { type: "string" } },
-      required: ["athlete_name"]
+      properties: {
+        customer_id: { type: "string" },
+        athlete_name: { type: "string" }
+      },
+      required: ["customer_id", "athlete_name"]
     },
-    handler: ({ athlete_name }) =>
-      callApi("GET", `/athletes/${athlete_name}`)
+    handler: ({ customer_id, athlete_name }) =>
+      callApi("GET", `/athletes/${athlete_name}`, {}, { customer_id })
   },
   {
     name: "deletar_atleta",
     description: "Remove atleta pelo nome",
     inputSchema: {
       type: "object",
-      properties: { athlete_name: { type: "string" } },
-      required: ["athlete_name"]
+      properties: {
+        customer_id: { type: "string" },
+        athlete_name: { type: "string" }
+      },
+      required: ["customer_id", "athlete_name"]
     },
-    handler: async ({ athlete_name }) => {
-      const atleta = await callApi("GET", `/athletes/${athlete_name}`);
-      if (atleta?.id) return callApi("DELETE", `/athletes/${atleta.id}`);
+    handler: async ({ customer_id, athlete_name }) => {
+      const atleta = await callApi("GET", `/athletes/${athlete_name}`, {}, { customer_id });
+      if (atleta?.id)
+        return callApi("DELETE", `/athletes/${atleta.id}`, { customer_id });
       return { status: "erro", detalhe: "Atleta não encontrado" };
     }
   },
@@ -95,16 +108,14 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
+        customer_id: { type: "string" },
         athlete_name: { type: "string" },
         workout_details: { type: "string" }
       },
-      required: ["athlete_name", "workout_details"]
+      required: ["customer_id", "athlete_name", "workout_details"]
     },
     handler: (args) =>
-      callApi("POST", "/workouts/", {
-        athlete_name: args.athlete_name,
-        workout_details: args.workout_details
-      })
+      callApi("POST", "/workouts/", args)
   },
   {
     name: "registrar_avaliacao",
@@ -112,18 +123,14 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
+        customer_id: { type: "string" },
         athlete_name: { type: "string" },
         tipo_avaliacao: { type: "string" },
         resultados: { type: "object" }
       },
-      required: ["athlete_name", "tipo_avaliacao", "resultados"]
+      required: ["customer_id", "athlete_name", "tipo_avaliacao", "resultados"]
     },
-    handler: (args) =>
-      callApi("POST", "/assessments/", {
-        athlete_name: args.athlete_name,
-        tipo_avaliacao: args.tipo_avaliacao,
-        resultados: args.resultados
-      })
+    handler: (args) => callApi("POST", "/assessments/", args)
   },
   {
     name: "registrar_bem_estar",
@@ -131,22 +138,16 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
+        customer_id: { type: "string" },
         athlete_name: { type: "string" },
         qualidade_sono: { type: "string" },
         nivel_estresse: { type: "string" },
         dores_musculares: { type: "string" },
         prontidao_cmj: { type: "string" }
       },
-      required: ["athlete_name", "qualidade_sono", "nivel_estresse"]
+      required: ["customer_id", "athlete_name", "qualidade_sono", "nivel_estresse"]
     },
-    handler: (args) =>
-      callApi("POST", "/wellness/log", {
-        athlete_name: args.athlete_name,
-        qualidade_sono: args.qualidade_sono,
-        nivel_estresse: args.nivel_estresse,
-        dores_musculares: args.dores_musculares || "Nenhuma",
-        prontidao_cmj: args.prontidao_cmj || null
-      })
+    handler: (args) => callApi("POST", "/wellness/log", args)
   },
 
   // ----------------- Planejamento -----------------
@@ -156,6 +157,7 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
+        customer_id: { type: "string" },
         athlete_name: { type: "string" },
         meso_name: { type: "string" },
         start_date: { type: "string" },
@@ -163,17 +165,9 @@ const tools = [
         progression_type: { type: "string" },
         progression_details: { type: "object" }
       },
-      required: ["athlete_name", "meso_name", "duracao_semanas", "progression_type"]
+      required: ["customer_id", "athlete_name", "meso_name", "duracao_semanas", "progression_type"]
     },
-    handler: (args) =>
-      callApi("POST", "/planning/generate-mesocycle", {
-        athlete_name: args.athlete_name,
-        meso_name: args.meso_name,
-        start_date: args.start_date,
-        duracao_semanas: args.duracao_semanas,
-        progression_type: args.progression_type,
-        progression_details: args.progression_details || {}
-      })
+    handler: (args) => callApi("POST", "/planning/generate-mesocycle", args)
   },
 
   // ----------------- Relatórios -----------------
@@ -182,17 +176,25 @@ const tools = [
     description: "Gera relatório completo de atleta",
     inputSchema: {
       type: "object",
-      properties: { athlete_name: { type: "string" } },
-      required: ["athlete_name"]
+      properties: {
+        customer_id: { type: "string" },
+        athlete_name: { type: "string" }
+      },
+      required: ["customer_id", "athlete_name"]
     },
-    handler: ({ athlete_name }) =>
-      callApi("GET", `/reports/athlete-report/${athlete_name}`)
+    handler: ({ customer_id, athlete_name }) =>
+      callApi("GET", `/reports/athlete-report/${athlete_name}`, {}, { customer_id })
   },
   {
     name: "gerar_relatorio_equipe",
     description: "Gera relatório consolidado da equipe",
-    inputSchema: { type: "object", properties: {} },
-    handler: () => callApi("GET", "/reports/team-report")
+    inputSchema: {
+      type: "object",
+      properties: { customer_id: { type: "string" } },
+      required: ["customer_id"]
+    },
+    handler: ({ customer_id }) =>
+      callApi("GET", "/reports/team-report", {}, { customer_id })
   },
 
   // ----------------- Análises Gráficas -----------------
@@ -202,19 +204,16 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
+        customer_id: { type: "string" },
         athlete_name: { type: "string" },
         metric_name: { type: "string" }
       },
-      required: ["athlete_name", "metric_name"]
+      required: ["customer_id", "athlete_name", "metric_name"]
     },
     handler: (args) =>
-      callApi("GET", "/charts/performance-chart", {}, {
-        athlete_name: args.athlete_name,
-        metric_name: args.metric_name
-      })
+      callApi("GET", "/charts/performance-chart", {}, args)
   }
 ];
-
 
 // ----------------- JSON-RPC Handler -----------------
 app.post("/mcp", async (req, res) => {
@@ -231,7 +230,7 @@ app.post("/mcp", async (req, res) => {
     result = { tools };
   } else if (method === "tools/call") {
     const { name, arguments: args } = params;
-    const tool = tools.find(t => t.name === name);
+    const tool = tools.find((t) => t.name === name);
     if (!tool) {
       error = { code: -32601, message: "Tool não encontrada" };
     } else {

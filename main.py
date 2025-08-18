@@ -4,6 +4,7 @@ from typing import List, Dict, Any
 from datetime import date
 from fastmcp import FastMCP
 from fastmcp.tools import ToolManager, FunctionTool
+import asyncio
 import os
 
 # --- 1. CONFIGURAÇÃO ---
@@ -136,6 +137,11 @@ tool_manager.add_tool(FunctionTool(name="gerar_relatorio_equipe", fn=gerar_relat
 tool_manager.add_tool(FunctionTool(name="gerar_grafico_performance", fn=gerar_grafico_performance, parameters=GraficoInput.model_json_schema()))
 
 # --- 5. CRIAÇÃO DO SERVIDOR MCP ---
+
+# Usamos asyncio.run() para executar a função assíncrona 'get_tools' e obter a lista.
+tools_list = asyncio.run(tool_manager.get_tools())
+
+# Agora passamos a lista resolvida para o servidor.
 app = FastMCP(
     tools=tool_manager.get_tools() # <-- CORREÇÃO FINAL: Usamos o método get_tools() para obter a lista.
 )

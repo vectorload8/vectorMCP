@@ -4,9 +4,9 @@
   "type": "module",
   "main": "server.js",
   "dependencies": {
-    "@pipedream/mcp": "^0.0.1",
     "axios": "^1.7.0",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
   },
   "scripts": {
     "start": "node server.js"

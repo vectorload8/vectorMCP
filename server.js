@@ -1,9 +1,14 @@
 import express from "express";
-import { createMcpServer } from "@pipedream/mcp";
+import cors from "cors";
 import axios from "axios";
+
+const app = express();
+app.use(cors());
+app.use(express.json());
 
 const VECTOR_API_URL = process.env.VECTOR_API_URL || "https://vectorapi.up.railway.app/v1";
 
+// ----------------- Helper -----------------
 async function callApi(method, endpoint, data = {}, params = {}) {
   try {
     const res = await axios({
@@ -22,6 +27,7 @@ async function callApi(method, endpoint, data = {}, params = {}) {
   }
 }
 
+// ----------------- Tools -----------------
 const tools = [
   {
     name: "adicionar_atleta",
@@ -160,32 +166,47 @@ const tools = [
   }
 ];
 
-// Cria MCP server
-const mcp = createMcpServer({
-  name: "vector-ai-sports",
-  version: "1.0.0",
-  tools
+// ----------------- JSON-RPC Handler -----------------
+app.post("/mcp", async (req, res) => {
+  const { jsonrpc, id, method, params } = req.body;
+  let result, error;
+
+  if (method === "initialize") {
+    result = {
+      protocolVersion: "2024-11-05",
+      capabilities: { tools: { listChanged: false } },
+      serverInfo: { name: "vector-ai-sports", version: "1.0.0" }
+    };
+  } else if (method === "tools/list") {
+    result = { tools };
+  } else if (method === "tools/call") {
+    const { name, arguments: args } = params;
+    const tool = tools.find(t => t.name === name);
+    if (!tool) {
+      error = { code: -32601, message: "Tool não encontrada" };
+    } else {
+      result = await tool.handler(args || {});
+    }
+  } else {
+    error = { code: -32601, message: `Method not found: ${method}` };
+  }
+
+  res.json({ jsonrpc: "2.0", id, result, error });
 });
 
-const app = express();
-
-// Health check
+// ----------------- Health Check -----------------
 app.get("/", (req, res) => {
   res.json({
-    message: "Vector AI MCP Server (Node) está rodando",
+    message: "Vector AI MCP Server está rodando",
     version: "1.0.0",
-    mcp_endpoint: "/mcp (SSE)",
+    mcp_endpoint: "/mcp (HTTP JSON-RPC)",
     tools_count: tools.length,
     vector_api_url: VECTOR_API_URL,
     status: "online"
   });
 });
 
-// Monta SSE direto em /mcp
-app.use("/mcp", mcp);
-
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`🚀 Vector AI MCP rodando em http://0.0.0.0:${PORT}/mcp`);
 });
-
